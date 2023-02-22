@@ -1,0 +1,22 @@
+[Tue Oct 20 23:07:22] ~# systemctl status xtcp
+● xtcp.service - xtcp
+   Loaded: loaded (/etc/systemd/system/xtcp.service; enabled; vendor preset: enabled)
+   Active: active (running) since Thu 2020-10-15 16:36:51 UTC; 5 days ago
+     Docs: https://github.com/Edgio/xtcp/
+ Main PID: 11879 (xtcp)
+    Tasks: 12 (limit: 32)
+   Memory: 18.8M (limit: 2.0G)
+      CPU: 5h 59min 37.088s
+   CGroup: /system.slice/xtcp.service
+           └─11879 /Edgio/xtcp/bin/xtcp -frequency 30s -samplingModulus 2 -inetdiagerReportModulus 2000
+
+Oct 20 23:06:53 cache10.laa xtcp_wrapper.bash[11879]: poller af: v4         pollToDoneDuration: 1.362260245s         pollToDoneDuration.Seconds(): 1.3622602449999999
+Oct 20 23:06:53 cache10.laa xtcp_wrapper.bash[11879]: poller af: v4         pollDuration.Seconds(): 1.416234343         out of: 30s
+Oct 20 23:07:06 cache10.laa xtcp_wrapper.bash[11879]: poller af: v6         pollingLoops: 15180         < maxloops: 0         workersStarted: true         *netlinkers: 2         *inetdiagers: 4
+Oct 20 23:07:06 cache10.laa xtcp_wrapper.bash[11879]: iStater af: v6         totalInetdiagerMsgs:         192 / 534363559         totalInetdiagerUDPs: 0 / 267188
+Oct 20 23:07:06 cache10.laa xtcp_wrapper.bash[11879]: poller af: v6         pollToDoneDuration: 18.571311ms         pollToDoneDuration.Seconds(): 0.018571311
+Oct 20 23:07:06 cache10.laa xtcp_wrapper.bash[11879]: poller af: v6         pollDuration.Seconds(): 0.076212497         out of: 30s
+Oct 20 23:07:21 cache10.laa xtcp_wrapper.bash[11879]: poller af: v4         pollingLoops: 15181         < maxloops: 0         workersStarted: true         *netlinkers: 4         *inetdiagers: 10
+Oct 20 23:07:21 cache10.laa xtcp_wrapper.bash[11879]: iStater af: v4         totalInetdiagerMsgs:         3691 / 534403515         totalInetdiagerUDPs: 2 / 267208
+Oct 20 23:07:23 cache10.laa xtcp_wrapper.bash[11879]: poller af: v4         pollToDoneDuration: 1.568205608s         pollToDoneDuration.Seconds(): 1.568205608
+Oct 20 23:07:23 cache10.laa xtcp_wrapper.bash[11879]: poller af: v4         pollDuration.Seconds(): 1.6242169899999999         out of: 30s

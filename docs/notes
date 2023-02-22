@@ -1,0 +1,618 @@
+notes
+
+http://man7.org/linux/man-pages/man7/sock_diag.7.html
+
+https://github.com/torvalds/linux/blob/29d9f30d4ce6c7a38745a54a8cddface10013490/include/uapi/linux/sock_diag.h#L7
+
+#define SOCK_DIAG_BY_FAMILY 20
+#define SOCK_DESTROY 21
+
+
+https://github.com/torvalds/linux/blob/481ed297d900af0ce395f6ca8975903b76a5a59e/include/linux/socket.h#L165
+
+#define AF_INET		2	/* Internet IP Protocol 	*/
+#define AF_INET6	10	/* IP version 6			*/
+
+
+https://github.com/torvalds/linux/blob/0d81a3f29c0afb18ba2b1275dcccf21e0dd4da38/include/uapi/linux/in.h#L38
+
+#if __UAPI_DEF_IN_IPPROTO
+/* Standard well-defined IP protocols.  */
+enum {
+  IPPROTO_IP = 0,		/* Dummy protocol for TCP		*/
+#define IPPROTO_IP		IPPROTO_IP
+  IPPROTO_ICMP = 1,		/* Internet Control Message Protocol	*/
+#define IPPROTO_ICMP		IPPROTO_ICMP
+  IPPROTO_IGMP = 2,		/* Internet Group Management Protocol	*/
+#define IPPROTO_IGMP		IPPROTO_IGMP
+  IPPROTO_IPIP = 4,		/* IPIP tunnels (older KA9Q tunnels use 94) */
+#define IPPROTO_IPIP		IPPROTO_IPIP
+  IPPROTO_TCP = 6,		/* Transmission Control Protocol	*/
+#define IPPROTO_TCP		IPPROTO_TCP
+
+https://github.com/torvalds/linux/blob/481ed297d900af0ce395f6ca8975903b76a5a59e/include/linux/socket.h#L179
+#define AF_NETLINK	16
+#define AF_ROUTE	AF_NETLINK /* Alias to emulate 4.4BSD */
+
+
+https://github.com/torvalds/linux/blob/1d51b4b1d3f2db0d6d144175e31a84e472fbd99a/include/uapi/linux/netlink.h#L37
+#define NETLINK_INET_DIAG	NETLINK_SOCK_DIAG
+
+
+https://github.com/torvalds/linux/blob/1d51b4b1d3f2db0d6d144175e31a84e472fbd99a/include/uapi/linux/netlink.h
+#define NLMSG_ALIGNTO	4U
+#define NLMSG_ALIGN(len) ( ((len)+NLMSG_ALIGNTO-1) & ~(NLMSG_ALIGNTO-1) )
+#define NLMSG_HDRLEN	 ((int) NLMSG_ALIGN(sizeof(struct nlmsghdr)))
+#define NLMSG_LENGTH(len) ((len) + NLMSG_HDRLEN)
+#define NLMSG_SPACE(len) NLMSG_ALIGN(NLMSG_LENGTH(len))
+#define NLMSG_DATA(nlh)  ((void*)(((char*)nlh) + NLMSG_LENGTH(0)))
+#define NLMSG_NEXT(nlh,len)	 ((len) -= NLMSG_ALIGN((nlh)->nlmsg_len), \
+				  (struct nlmsghdr*)(((char*)(nlh)) + NLMSG_ALIGN((nlh)->nlmsg_len)))
+#define NLMSG_OK(nlh,len) ((len) >= (int)sizeof(struct nlmsghdr) && \
+			   (nlh)->nlmsg_len >= sizeof(struct nlmsghdr) && \
+			   (nlh)->nlmsg_len <= (len))
+#define NLMSG_PAYLOAD(nlh,len) ((nlh)->nlmsg_len - NLMSG_SPACE((len)))
+
+
+#define MAX_LINKS 32
+https://github.com/torvalds/linux/blob/481ed297d900af0ce395f6ca8975903b76a5a59e/include/linux/socket.h#L49
+
+struct msghdr {
+	void		*msg_name;	/* ptr to socket address structure */
+	int		msg_namelen;	/* size of socket address structure */
+	struct iov_iter	msg_iter;	/* data */
+	void		*msg_control;	/* ancillary data */
+	__kernel_size_t	msg_controllen;	/* ancillary data buffer length */
+	unsigned int	msg_flags;	/* flags on received message */
+	struct kiocb	*msg_iocb;	/* ptr to iocb for async requests */
+};
+
+struct sockaddr_nl {
+	__kernel_sa_family_t	nl_family;	/* AF_NETLINK	*/
+	unsigned short	nl_pad;		/* zero		*/
+	__u32		nl_pid;		/* port ID	*/
+       	__u32		nl_groups;	/* multicast groups mask */
+};
+
+// https://github.com/torvalds/linux/blob/1d51b4b1d3f2db0d6d144175e31a84e472fbd99a/tools/include/uapi/linux/netlink.h#L44
+struct nlmsghdr {
+	__u32		nlmsg_len;	/* Length of message including header */
+	__u16		nlmsg_type;	/* Message content */
+	__u16		nlmsg_flags;	/* Additional flags */
+	__u32		nlmsg_seq;	/* Sequence number */
+	__u32		nlmsg_pid;	/* Sending process port ID */
+};
+
+/* Flags values */
+
+#define NLM_F_REQUEST		0x01	/* It is request message. 	*/
+#define NLM_F_MULTI		0x02	/* Multipart message, terminated by NLMSG_DONE */
+#define NLM_F_ACK		0x04	/* Reply with ack, with zero or error code */
+#define NLM_F_ECHO		0x08	/* Echo this request 		*/
+#define NLM_F_DUMP_INTR		0x10	/* Dump was inconsistent due to sequence change */
+#define NLM_F_DUMP_FILTERED	0x20	/* Dump was filtered as requested */
+
+/* Modifiers to GET request */
+#define NLM_F_ROOT	0x100	/* specify tree	root	*/
+#define NLM_F_MATCH	0x200	/* return all matching	*/
+#define NLM_F_ATOMIC	0x400	/* atomic GET		*/
+#define NLM_F_DUMP	(NLM_F_ROOT|NLM_F_MATCH)
+
+#define NLMSG_NOOP		0x1	/* Nothing.		*/
+#define NLMSG_ERROR		0x2	/* Error		*/
+#define NLMSG_DONE		0x3	/* End of a dump	*/
+#define NLMSG_OVERRUN		0x4	/* Data lost		*/
+
+https://github.com/vishvananda/netlink/commit/e2c06bf8a8deec620e3590bff454fd6050f8c0b0
+
+
+#define NLMSG_OK(nlh,len) ((len) >= (int)sizeof(struct nlmsghdr) && \
+			   (nlh)->nlmsg_len >= sizeof(struct nlmsghdr) && \
+			   (nlh)->nlmsg_len <= (len))
+https://github.com/torvalds/linux/blob/1d51b4b1d3f2db0d6d144175e31a84e472fbd99a/tools/include/uapi/linux/netlink.h
+
+
+
+https://github.com/torvalds/linux/blob/2f4c53349961c8ca480193e47da4d44fdb8335a8/include/net/tcp_states.h
+
+enum {
+	TCP_ESTABLISHED = 1,
+	TCP_SYN_SENT,
+	TCP_SYN_RECV,
+	TCP_FIN_WAIT1,
+	TCP_FIN_WAIT2,
+	TCP_TIME_WAIT,
+	TCP_CLOSE,
+	TCP_CLOSE_WAIT,
+	TCP_LAST_ACK,
+	TCP_LISTEN,
+	TCP_CLOSING,	/* Now a valid state */
+	TCP_NEW_SYN_RECV,
+
+	TCP_MAX_STATES	/* Leave at the end! */
+};
+
+#define TCP_STATE_MASK	0xF
+
+#define TCP_ACTION_FIN	(1 << TCP_CLOSE)
+
+enum {
+	TCPF_ESTABLISHED = (1 << TCP_ESTABLISHED),
+	TCPF_SYN_SENT	 = (1 << TCP_SYN_SENT),
+	TCPF_SYN_RECV	 = (1 << TCP_SYN_RECV),
+	TCPF_FIN_WAIT1	 = (1 << TCP_FIN_WAIT1),
+	TCPF_FIN_WAIT2	 = (1 << TCP_FIN_WAIT2),
+	TCPF_TIME_WAIT	 = (1 << TCP_TIME_WAIT),
+	TCPF_CLOSE	 = (1 << TCP_CLOSE),
+	TCPF_CLOSE_WAIT	 = (1 << TCP_CLOSE_WAIT),
+	TCPF_LAST_ACK	 = (1 << TCP_LAST_ACK),
+	TCPF_LISTEN	 = (1 << TCP_LISTEN),
+	TCPF_CLOSING	 = (1 << TCP_CLOSING),
+	TCPF_NEW_SYN_RECV = (1 << TCP_NEW_SYN_RECV),
+};
+
+
+inet_diag
+https://github.com/torvalds/linux/blob/29d9f30d4ce6c7a38745a54a8cddface10013490/include/uapi/linux/inet_diag.h#L115
+
+/* Base info structure. It contains socket identity (addrs/ports/cookie)
+ * and, alas, the information shown by netstat. */
+struct inet_diag_msg {
+	__u8	idiag_family;
+	__u8	idiag_state;
+	__u8	idiag_timer;
+	__u8	idiag_retrans;
+
+	struct inet_diag_sockid id;
+
+	__u32	idiag_expires;
+	__u32	idiag_rqueue;
+	__u32	idiag_wqueue;
+	__u32	idiag_uid;
+	__u32	idiag_inode;
+};
+
+http://man7.org/linux/man-pages/man7/sock_diag.7.html
+
+https://github.com/torvalds/linux/blob/29d9f30d4ce6c7a38745a54a8cddface10013490/include/uapi/linux/inet_diag.h#L13
+struct inet_diag_sockid {
+	__be16	idiag_sport;
+	__be16	idiag_dport;
+	__be32	idiag_src[4];
+	__be32	idiag_dst[4];
+	__u32	idiag_if;
+	__u32	idiag_cookie[2];
+#define INET_DIAG_NOCOOKIE (~0U)
+};
+
+https://github.com/torvalds/linux/blob/29d9f30d4ce6c7a38745a54a8cddface10013490/include/uapi/linux/inet_diag.h#L204
+struct tcp_bbr_info {
+	/* u64 bw: max-filtered BW (app throughput) estimate in Byte per sec: */
+	__u32	bbr_bw_lo;		/* lower 32 bits of bw */
+	__u32	bbr_bw_hi;		/* upper 32 bits of bw */
+	__u32	bbr_min_rtt;		/* min-filtered RTT in uSec */
+	__u32	bbr_pacing_gain;	/* pacing gain shifted left 8 bits */
+	__u32	bbr_cwnd_gain;		/* cwnd gain shifted left 8 bits */
+};
+
+
+
+https://github.com/torvalds/linux/blob/29d9f30d4ce6c7a38745a54a8cddface10013490/net/ipv4/inet_diag.c#L1097
+
+http://kristrev.github.io/2013/07/26/passive-monitoring-of-sockets-on-linux
+
+https://github.com/kristrev/inet-diag-example/blob/master/inet_monitor.c
+inet_diag_req_v2
+
+
+struct inet_diag_req_v2 {
+	__u8	sdiag_family;
+	__u8	sdiag_protocol;
+	__u8	idiag_ext;
+	__u8	pad;
+	__u32	idiag_states;
+	struct inet_diag_sockid id;
+};
+
+
+https://github.com/torvalds/linux/blob/29d9f30d4ce6c7a38745a54a8cddface10013490/include/uapi/linux/inet_diag.h#L38
+
+
+struct rtattr {
+	unsigned short	rta_len;
+	unsigned short	rta_type;
+};
+https://github.com/torvalds/linux/blob/bd2463ac7d7ec51d432f23bf0e893fb371a908cd/include/uapi/linux/rtnetlink.h#L195
+
+
+struct iovec
+{
+	void __user *iov_base;	/* BSD uses caddr_t (1003.1g requires void *) */
+	__kernel_size_t iov_len; /* Must be size_t (1003.1g) */
+};
+
+https://github.com/torvalds/linux/blob/6f0d349d922ba44e4348a17a78ea51b7135965b1/include/uapi/linux/uio.h#L17
+
+
+
+
+/* Extensions */
+
+enum {
+	INET_DIAG_NONE,
+	INET_DIAG_MEMINFO,
+	INET_DIAG_INFO,
+	INET_DIAG_VEGASINFO,
+	INET_DIAG_CONG,
+	INET_DIAG_TOS,
+	INET_DIAG_TCLASS,
+	INET_DIAG_SKMEMINFO,
+	INET_DIAG_SHUTDOWN,
+
+	/*
+	 * Next extenstions cannot be requested in struct inet_diag_req_v2:
+	 * its field idiag_ext has only 8 bits.
+	 */
+
+	INET_DIAG_DCTCPINFO,	/* request as INET_DIAG_VEGASINFO */
+	INET_DIAG_PROTOCOL,	/* response attribute only */
+	INET_DIAG_SKV6ONLY,
+	INET_DIAG_LOCALS,
+	INET_DIAG_PEERS,
+	INET_DIAG_PAD,
+	INET_DIAG_MARK,		/* only with CAP_NET_ADMIN */
+	INET_DIAG_BBRINFO,	/* request as INET_DIAG_VEGASINFO */
+	INET_DIAG_CLASS_ID,	/* request as INET_DIAG_TCLASS */
+	INET_DIAG_MD5SIG,
+	INET_DIAG_ULP_INFO,
+	INET_DIAG_SK_BPF_STORAGES,
+	__INET_DIAG_MAX,
+};
+
+https://github.com/torvalds/linux/blob/29d9f30d4ce6c7a38745a54a8cddface10013490/include/uapi/linux/inet_diag.h#L133
+
+
+13w
+
+struct tcp_info {
+	__u8	tcpi_state;
+	__u8	tcpi_ca_state;
+	__u8	tcpi_retransmits;
+	__u8	tcpi_probes;
+	__u8	tcpi_backoff;
+	__u8	tcpi_options;
+	__u8	tcpi_snd_wscale : 4, tcpi_rcv_wscale : 4;
+	__u8	tcpi_delivery_rate_app_limited:1, tcpi_fastopen_client_fail:2;
+
+	__u32	tcpi_rto;
+	__u32	tcpi_ato;
+	__u32	tcpi_snd_mss;
+	__u32	tcpi_rcv_mss;
+
+	__u32	tcpi_unacked;
+	__u32	tcpi_sacked;
+	__u32	tcpi_lost;
+	__u32	tcpi_retrans;
+	__u32	tcpi_fackets;
+
+	/* Times. */
+	__u32	tcpi_last_data_sent;
+	__u32	tcpi_last_ack_sent;     /* Not remembered, sorry. */
+	__u32	tcpi_last_data_recv;
+	__u32	tcpi_last_ack_recv;
+
+	/* Metrics. */
+	__u32	tcpi_pmtu;
+	__u32	tcpi_rcv_ssthresh;
+	__u32	tcpi_rtt;
+	__u32	tcpi_rttvar;
+	__u32	tcpi_snd_ssthresh;
+	__u32	tcpi_snd_cwnd;
+	__u32	tcpi_advmss;
+	__u32	tcpi_reordering;
+
+	__u32	tcpi_rcv_rtt;
+	__u32	tcpi_rcv_space;
+
+	__u32	tcpi_total_retrans;
+
+	__u64	tcpi_pacing_rate;
+	__u64	tcpi_max_pacing_rate;
+	__u64	tcpi_bytes_acked;    /* RFC4898 tcpEStatsAppHCThruOctetsAcked */
+	__u64	tcpi_bytes_received; /* RFC4898 tcpEStatsAppHCThruOctetsReceived */
+	__u32	tcpi_segs_out;	     /* RFC4898 tcpEStatsPerfSegsOut */
+	__u32	tcpi_segs_in;	     /* RFC4898 tcpEStatsPerfSegsIn */
+
+	__u32	tcpi_notsent_bytes;
+	__u32	tcpi_min_rtt;
+	__u32	tcpi_data_segs_in;	/* RFC4898 tcpEStatsDataSegsIn */
+	__u32	tcpi_data_segs_out;	/* RFC4898 tcpEStatsDataSegsOut */
+
+	__u64   tcpi_delivery_rate;
+
+	__u64	tcpi_busy_time;      /* Time (usec) busy sending data */
+	__u64	tcpi_rwnd_limited;   /* Time (usec) limited by receive window */
+	__u64	tcpi_sndbuf_limited; /* Time (usec) limited by send buffer */
+
+	__u32	tcpi_delivered;
+	__u32	tcpi_delivered_ce;
+
+	__u64	tcpi_bytes_sent;     /* RFC4898 tcpEStatsPerfHCDataOctetsOut */
+	__u64	tcpi_bytes_retrans;  /* RFC4898 tcpEStatsPerfOctetsRetrans */
+	__u32	tcpi_dsack_dups;     /* RFC4898 tcpEStatsStackDSACKDups */
+	__u32	tcpi_reord_seen;     /* reordering events seen */
+
+	__u32	tcpi_rcv_ooopack;    /* Out-of-order packets received */
+
+	__u32	tcpi_snd_wnd;	     /* peer's advertised receive window after
+				      * scaling (bytes)
+				      */
+};
+
+
+https://github.com/shemminger/iproute2/blob/afa588490b7e87c5adfb05d5163074e20b6ff14a/misc/ss.c#L807
+
+https://tracker.debian.org/pkg/iproute2
+
+//iproute2-3.16.0
+struct tcpstat
+{
+	inet_prefix	local;
+	inet_prefix	remote;
+	int		lport;
+	int		rport;
+	int		state;
+	int		rq, wq;
+	int		timer;
+	int		timeout;
+	int		retrs;
+	unsigned	ino;
+	int		probes;
+	unsigned	uid;
+	int		refcnt;
+	unsigned long long sk;
+	int		rto, ato, qack, cwnd, ssthresh;
+};
+
+https://github.com/torvalds/linux/blob/29d9f30d4ce6c7a38745a54a8cddface10013490/include/uapi/linux/tcp.h#L214
+
+//iproute2-4.20.0
+struct tcpstat {
+	struct sockstat	    ss;
+	unsigned int	    timer;
+	unsigned int	    timeout;
+	int		    probes;
+	char		    cong_alg[16];
+	double		    rto, ato, rtt, rttvar;
+	int		    qack, ssthresh, backoff;
+	double		    send_bps;
+	int		    snd_wscale;
+	int		    rcv_wscale;
+	int		    mss;
+	int		    rcv_mss;
+	int		    advmss;
+	unsigned int	    pmtu;
+	unsigned int	    cwnd;
+	unsigned int	    lastsnd;
+	unsigned int	    lastrcv;
+	unsigned int	    lastack;
+	double		    pacing_rate;
+	double		    pacing_rate_max;
+	double		    delivery_rate;
+	unsigned long long  bytes_acked;
+	unsigned long long  bytes_received;
+	unsigned int	    segs_out;
+	unsigned int	    segs_in;
+	unsigned int	    data_segs_out;
+	unsigned int	    data_segs_in;
+	unsigned int	    unacked;
+	unsigned int	    retrans;
+	unsigned int	    retrans_total;
+	unsigned int	    lost;
+	unsigned int	    sacked;
+	unsigned int	    fackets;
+	unsigned int	    reordering;
+	unsigned int	    not_sent;
+	unsigned int	    delivered;
+	unsigned int	    delivered_ce;
+	unsigned int	    dsack_dups;
+	unsigned int	    reord_seen;
+	double		    rcv_rtt;
+	double		    min_rtt;
+	int		    rcv_space;
+	unsigned int        rcv_ssthresh;
+	unsigned long long  busy_time;
+	unsigned long long  rwnd_limited;
+	unsigned long long  sndbuf_limited;
+	unsigned long long  bytes_sent;
+	unsigned long long  bytes_retrans;
+	bool		    has_ts_opt;
+	bool		    has_sack_opt;
+	bool		    has_ecn_opt;
+	bool		    has_ecnseen_opt;
+	bool		    has_fastopen_opt;
+	bool		    has_wscale_opt;
+	bool		    app_limited;
+	struct dctcpstat    *dctcp;
+	struct tcp_bbr_info *bbr_info;
+};
+
+//iproute2-5.6.0
+struct tcpstat {
+	struct sockstat	    ss;
+	unsigned int	    timer;
+	unsigned int	    timeout;
+	int		    probes;
+	char		    cong_alg[16];
+	double		    rto, ato, rtt, rttvar;
+	int		    qack, ssthresh, backoff;
+	double		    send_bps;
+	int		    snd_wscale;
+	int		    rcv_wscale;
+	int		    mss;
+	int		    rcv_mss;
+	int		    advmss;
+	unsigned int	    pmtu;
+	unsigned int	    cwnd;
+	unsigned int	    lastsnd;
+	unsigned int	    lastrcv;
+	unsigned int	    lastack;
+	double		    pacing_rate;
+	double		    pacing_rate_max;
+	double		    delivery_rate;
+	unsigned long long  bytes_acked;
+	unsigned long long  bytes_received;
+	unsigned int	    segs_out;
+	unsigned int	    segs_in;
+	unsigned int	    data_segs_out;
+	unsigned int	    data_segs_in;
+	unsigned int	    unacked;
+	unsigned int	    retrans;
+	unsigned int	    retrans_total;
+	unsigned int	    lost;
+	unsigned int	    sacked;
+	unsigned int	    fackets;
+	unsigned int	    reordering;
+	unsigned int	    not_sent;
+	unsigned int	    delivered;
+	unsigned int	    delivered_ce;
+	unsigned int	    dsack_dups;
+	unsigned int	    reord_seen;
+	double		    rcv_rtt;
+	double		    min_rtt;
+	int		    rcv_space;
+	unsigned int        rcv_ssthresh;
+	unsigned long long  busy_time;
+	unsigned long long  rwnd_limited;
+	unsigned long long  sndbuf_limited;
+	unsigned long long  bytes_sent;
+	unsigned long long  bytes_retrans;
+	bool		    has_ts_opt;
+	bool		    has_sack_opt;
+	bool		    has_ecn_opt;
+	bool		    has_ecnseen_opt;
+	bool		    has_fastopen_opt;
+	bool		    has_wscale_opt;
+	bool		    app_limited;
+	struct dctcpstat    *dctcp;
+	struct tcp_bbr_info *bbr_info;
+};
+
+
+https://github.com/torvalds/linux/blob/2f4c53349961c8ca480193e47da4d44fdb8335a8/include/net/tcp_states.h
+
+
+https://github.com/torvalds/linux/blob/29d9f30d4ce6c7a38745a54a8cddface10013490/include/uapi/linux/tcp.h#L214
+struct tcp_info {
+	__u8	tcpi_state;
+	__u8	tcpi_ca_state;
+	__u8	tcpi_retransmits;
+	__u8	tcpi_probes;
+	__u8	tcpi_backoff;
+	__u8	tcpi_options;
+	__u8	tcpi_snd_wscale : 4, tcpi_rcv_wscale : 4;
+	__u8	tcpi_delivery_rate_app_limited:1, tcpi_fastopen_client_fail:2;
+
+	__u32	tcpi_rto;
+	__u32	tcpi_ato;
+	__u32	tcpi_snd_mss;
+	__u32	tcpi_rcv_mss;
+
+	__u32	tcpi_unacked;
+	__u32	tcpi_sacked;
+	__u32	tcpi_lost;
+	__u32	tcpi_retrans;
+	__u32	tcpi_fackets;
+
+	/* Times. */
+	__u32	tcpi_last_data_sent;
+	__u32	tcpi_last_ack_sent;     /* Not remembered, sorry. */
+	__u32	tcpi_last_data_recv;
+	__u32	tcpi_last_ack_recv;
+
+	/* Metrics. */
+	__u32	tcpi_pmtu;
+	__u32	tcpi_rcv_ssthresh;
+	__u32	tcpi_rtt;
+	__u32	tcpi_rttvar;
+	__u32	tcpi_snd_ssthresh;
+	__u32	tcpi_snd_cwnd;
+	__u32	tcpi_advmss;
+	__u32	tcpi_reordering;
+
+	__u32	tcpi_rcv_rtt;
+	__u32	tcpi_rcv_space;
+
+	__u32	tcpi_total_retrans;
+
+	__u64	tcpi_pacing_rate;
+	__u64	tcpi_max_pacing_rate;
+	__u64	tcpi_bytes_acked;    /* RFC4898 tcpEStatsAppHCThruOctetsAcked */
+	__u64	tcpi_bytes_received; /* RFC4898 tcpEStatsAppHCThruOctetsReceived */
+	__u32	tcpi_segs_out;	     /* RFC4898 tcpEStatsPerfSegsOut */
+	__u32	tcpi_segs_in;	     /* RFC4898 tcpEStatsPerfSegsIn */
+
+	__u32	tcpi_notsent_bytes;
+	__u32	tcpi_min_rtt;
+	__u32	tcpi_data_segs_in;	/* RFC4898 tcpEStatsDataSegsIn */
+	__u32	tcpi_data_segs_out;	/* RFC4898 tcpEStatsDataSegsOut */
+
+	__u64   tcpi_delivery_rate;
+
+	__u64	tcpi_busy_time;      /* Time (usec) busy sending data */
+	__u64	tcpi_rwnd_limited;   /* Time (usec) limited by receive window */
+	__u64	tcpi_sndbuf_limited; /* Time (usec) limited by send buffer */
+
+	__u32	tcpi_delivered;
+	__u32	tcpi_delivered_ce;
+
+	__u64	tcpi_bytes_sent;     /* RFC4898 tcpEStatsPerfHCDataOctetsOut */
+	__u64	tcpi_bytes_retrans;  /* RFC4898 tcpEStatsPerfOctetsRetrans */
+	__u32	tcpi_dsack_dups;     /* RFC4898 tcpEStatsStackDSACKDups */
+	__u32	tcpi_reord_seen;     /* reordering events seen */
+
+	__u32	tcpi_rcv_ooopack;    /* Out-of-order packets received */
+
+	__u32	tcpi_snd_wnd;	     /* peer's advertised receive window after
+				      * scaling (bytes)
+				      */
+};
+
+
+.15.0-88
+
+
+
+
+
+	// https://golang.org/pkg/syscall/#Socket
+	// https://golang.org/src/syscall/syscall_unix.go?s=7898:7953#L334
+	//func Socket(domain, typ, proto int) (fd int, err error)
+	//socket_file_descriptor, err := syscall.Socket(AF_NETLINK, SOCK_DGRAM, NETLINK_INET_DIAG)
+	//AF_NETLINK: 16
+	//SOCK_DGRAM: 2
+	//NETLINK_INET_DIAG: 4
+	socketFileDescriptor, err := syscall.Socket(16, 2, 4)
+	if err != nil {
+		log.Fatalf("syscall.socket error", err)
+	}
+	fmt.Println("socket_file_descriptor:", socketFileDescriptor)
+
+	sendmsgBuffer, err := ReadBinaryFile("test.bin")
+	fmt.Println("sendmsgBuffer:", binary.Size(sendmsgBuffer))
+
+	// https://golang.org/pkg/syscall/#Sendmsg
+	// https://golang.org/src/syscall/syscall_linux.go?s=15964:16035#L640
+	// actually that just uses
+	// https://golang.org/pkg/syscall/#SendmsgN
+	// https://golang.org/src/syscall/syscall_linux.go?s=16091:16170#L645
+	// func SendmsgN(fd int, p, oob []byte, to Sockaddr, flags int) (n int, err error)
+	//bytesSentToKernel, err := SendmsgN(socketFileDescriptor, p, oob []byte, to Sockaddr, 0)
+
+
+https://ops.tips/blog/udp-client-and-server-in-go/
+// Sets the read deadline for now + 15seconds.
+// If you plan to read from the same connection again,
+// make sure you expand the deadline before reading
+// it.
+conn.SetReadDeadline(time.Now().Add(15 * time.Second))
