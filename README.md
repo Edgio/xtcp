@@ -202,6 +202,8 @@ There are three (x3) main message sampling/throttling points within `xtcp`:
         - Intra PoP traffic
         - Origin servers
 
+
+
 The following diagram shows the sampling controls:
 
 <img src="./docs/diagrams/xtcp_sampling.png" alt="xtcp_sampling diagram" width="75%" height="75%"/>
@@ -211,6 +213,44 @@ e.g. To select all sockets
 ```
 xtcp --frequency 10ms -inetdiagerReportModulus 1 -samplingModulus 1
 ```
+
+## filterBlocks and filterJson
+
+To enable more controlled reporting, a filter can be specified. Along with a separately specificed
+filter report modulus, this allows for traffic matching a particular filter to be reported at
+a different rate, for example reporting fewer sockets for internal vs external communication.  The
+filter itself is specified providing a json file of IP ranges to be included in the filter of the
+following format:
+
+<group name>:
+	     "V4" : [
+                     {
+                      "StartIp": <block starting address>,
+                      "EndIP": <block ending address>
+		     },
+                     ...
+		}
+	     "V6" : [
+                     {
+                      "StartIp": <block starting address>,
+                      "EndIP": <block ending address>
+		     },
+                     ...
+		}
+
+
+Note  that multiple blocks of each address family can be specified. When enabling the filter, the
+group name is specified by CLI flags. The full set of filtering flags are the following:
+
+- eanbleFilter - enables the use of filtering.
+- filterJson - Specifies the location of the filter json of the above format.
+- filterGroup - Specifies the group name that will match the filter.
+- inetdiagerFilterReportModulus - Specifies the filter modulus to be used for sockets which match the group.
+- includeLoopback - Specifies whether of not loopback sockets should be included.
+
+
+
+
 
 Outstanding security controls:
 - NOT chrooted

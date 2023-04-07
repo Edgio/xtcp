@@ -17,6 +17,7 @@ test:
 	chmod 755 ./pkg/disabler/testdata/return_one_after_X_runs.bash
 
 	go test -v ./pkg/inetdiager/
+	go test -v ./pkg/blockfilter/
 	go test -v ./pkg/xtcpnl/
 	go test -v ./pkg/disabler/
 	go test -v ./pkg/xtcpstater/
@@ -39,6 +40,7 @@ bench:
 	#go test -bench=. -run Trim
 
 	go test -v ./pkg/inetdiager/ -bench=.
+	go test -v ./pkg/blockfilter/ -bench=.
 	go test -v ./pkg/xtcpnl/ -bench=.
 	go test -v ./pkg/disabler/ -bench=.
 	go test -v ./pkg/xtcpstater/ -bench=.

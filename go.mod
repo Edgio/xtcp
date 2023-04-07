@@ -4,6 +4,8 @@ go 1.16
 
 replace github.com/Edgio/xtcp/pkg/misc => ./pkg/misc
 
+replace github.com/Edgio/xtcp/pkg/blockfilter => ./pkg/blockfilter
+
 replace github.com/Edgio/xtcp/pkg/cliflags => ./pkg/cliflags
 
 replace github.com/Edgio/xtcp/pkg/xtcppb => ./pkg/xtcppb

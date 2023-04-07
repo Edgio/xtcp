@@ -74,6 +74,8 @@ func main() {
 	samplingModulus := flag.Int("samplingModulus", 2, "samplingModulus.  Netlinker will sample every Xth inetdiag messages to send to inetdiager. Default 2") //TODO make default 1
 	// CLI standard out reporting modulus.  e.g. report every x inetd messages
 	inetdiagerReportModulus := flag.Int("inetdiagerReportModulus", 2000, "inetdiagerReportModulus. Report every X inetd messages to Kafka. Default 2000") //TODO make default 1000
+	inetdiagerFilterReportModulus := flag.Int("inetdiagerFilterReportModulus", 2000, "inetdiagerFilterReportModulus. Report every X inetd messages that matches the filter to Kafka. Default 2000")
+
 	inetdiagerStatsRatio := flag.Float64("inetdiagerStatsRatio", 0.9, "inetdiagerStatsRatio controls the how often the inetdiagers send summary stats, which is as a percentage of the pollingFrequencySeconds. Default = 0.9 (90% of pollingFrequencySeconds)")
 
 	// UDP send destination
@@ -129,6 +131,13 @@ func main() {
 	xTCPStaterFrequency := flag.Duration("xTCPStaterFrequencySeconds", 60*time.Second, "XTCP stater reporting frequency. Default 60 seconds")
 	xTCPStaterSystemctlPath := flag.String("xTCPStaterSystemctlPath", "/bin/systemctl", "Full system path to systemctl.  Default \"/bin/systemctl\"")
 	xTCPStaterPsPath := flag.String("xTCPStaterPsPath", "/bin/ps", "Full system path to ps.  Default \"/bin/ps\"")
+	// Controls to include or disclude loopbacks socks
+	includeLoopback := flag.Bool("includeLoopback", false, "Include loopback in collection. Default: false")
+
+	// Controls for the pop local block filters
+	enableFilter := flag.Bool("enableFilter", false, "Subsample sockets that match the filter blocks. Default: false")
+	filterJson := flag.String("filterJson", "", "Json definition of the filter groups.")
+	filterGroup := flag.String("filterGroup", "", "Name of filter group used in top level of filterJson.")
 
 	version := flag.Bool("version", false, "show version")
 	defaults := flag.Bool("defaults", false, "show default configuration")
@@ -165,6 +174,7 @@ func main() {
 			fmt.Println("*netlinkerChSize:", *netlinkerChSize)
 			fmt.Println("*samplingModulus:", *samplingModulus)
 			fmt.Println("*inetdiagerReportModulus:", *inetdiagerReportModulus)
+			fmt.Println("*inetdiagerFilterReportModulus:", *inetdiagerFilterReportModulus)
 			fmt.Println("*inetdiagerStatsRatio:", *inetdiagerStatsRatio)
 			fmt.Println("*udpSendDest:", *udpSendDest)
 			fmt.Println("*promListen:", *promListen)
@@ -184,6 +194,10 @@ func main() {
 			fmt.Println("*xTCPStaterFrequency:", *xTCPStaterFrequency)
 			fmt.Println("*xTCPStaterSystemctlPath:", *xTCPStaterSystemctlPath)
 			fmt.Println("*xTCPStaterPsPath:", *xTCPStaterPsPath)
+			fmt.Println("*includeLoopback:", *includeLoopback)
+			fmt.Println("*enableFilter:", *enableFilter)
+			fmt.Println("*filterJson:", *filterJson)
+			fmt.Println("*filterGroup:", *filterGroup)
 			fmt.Println("*nsq:", *nsq)
 		}
 		os.Exit(0)
@@ -223,6 +237,7 @@ func main() {
 	cliFlags.NetlinkerChSize = netlinkerChSize
 	cliFlags.SamplingModulus = samplingModulus
 	cliFlags.InetdiagerReportModulus = inetdiagerReportModulus
+	cliFlags.InetdiagerFilterReportModulus = inetdiagerFilterReportModulus
 	cliFlags.InetdiagerStatsRatio = inetdiagerStatsRatio
 	cliFlags.GoMaxProcs = goMaxProcs
 	cliFlags.UDPSendDest = udpSendDest
@@ -242,6 +257,10 @@ func main() {
 	cliFlags.XTCPStaterFrequency = xTCPStaterFrequency
 	cliFlags.XTCPStaterSystemctlPath = xTCPStaterSystemctlPath
 	cliFlags.XTCPStaterPsPath = xTCPStaterPsPath
+	cliFlags.IncludeLoopback = includeLoopback
+	cliFlags.EnableFilter = enableFilter
+	cliFlags.FilterJson = filterJson
+	cliFlags.FilterGroup = filterGroup
 	cliFlags.NSQ = nsq
 
 	// Start background polling job to cleanly exit if the return code of executing 'disablerCommand' is "1"

@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Edgio/xtcp/pkg/blockfilter"
 	"github.com/Edgio/xtcp/pkg/cliflags"
 	"github.com/Edgio/xtcp/pkg/inetdiager"
 	"github.com/Edgio/xtcp/pkg/inetdiagerstater"
@@ -110,6 +111,14 @@ func Poller(af uint8, hostname *string, cliFlags cliflags.CliFlags, wg *sync.Wai
 	// Prometheus variables
 	var currentPollerStats pollerstater.PollerStats
 
+	// Let's get our filter blocks ready, so we can have the inetdiager check them in the loop
+	var localFilter *blockfilter.NetBlocks
+	if *cliFlags.EnableFilter {
+		localFilter = blockfilter.LoadGroupNetworks(*cliFlags.FilterJson, *cliFlags.FilterGroup)
+	} else {
+		localFilter = nil
+	}
+
 	// Initialize sockets and netlink request binary blobs
 
 	// Build the binary blobs of the netlink inet diag dump requests, one for each address family
@@ -150,7 +159,7 @@ func Poller(af uint8, hostname *string, cliFlags cliflags.CliFlags, wg *sync.Wai
 			// startup the workers in reverse pipeline order
 			for inetdiagerID := 0; inetdiagerID < *afToInetdiagers[af]; inetdiagerID++ {
 				inetdiagerWG.Add(1)
-				go inetdiager.Inetdiager(inetdiagerID, &af, netlinkerCh, &inetdiagerWG, *hostname, cliFlags, inetdiagerStaterCh)
+				go inetdiager.Inetdiager(inetdiagerID, &af, netlinkerCh, &inetdiagerWG, *hostname, cliFlags, inetdiagerStaterCh, localFilter)
 				if debugLevel > 100 {
 					fmt.Println("poller af:", misc.KernelEnumToString[af], "\tinetdiagerID started:", inetdiagerID)
 				}

@@ -4,8 +4,8 @@
 #===============================================================================
 #
 # This wrapper is providing the ability to:
-# 1.  Inspect xconfig xtcp_disable to NOT start xtcp, instead just exiting cleanly, so systemd doesn't consider xtcp failed
-# 2.  Starts xtcp with CLI arguments based on xconfig xtcp_command
+# 1.  Inspect env var xtcp_disable to NOT start xtcp, instead just exiting cleanly, so systemd doesn't consider xtcp failed
+# 2.  Starts xtcp with CLI arguments based on env var xtcp_command
 
 #------------------------------------------
 # Function to send to standard output and syslog
@@ -27,7 +27,7 @@ echo_and_syslog () {
 
 #------------------------------------------
 # Quickly check if xtcp is running
-XTCP_PID=$(/usr/bin/pgrep --full /home/vagrant/xtcp-opensource/bin/xtcp);
+XTCP_PID="$(/usr/bin/pgrep --full /home/vagrant/xtcp-opensource/bin/xtcp)";
 PGREP_STATUS=$?;
 echo_and_syslog "$0 line:$LINENO PGREP_STATUS: $PGREP_STATUS, XTCP_PID: $XTCP_PID";
 
@@ -54,8 +54,8 @@ echo_and_syslog "$0 line:$LINENO PGREP_STATUS: $PGREP_STATUS, XTCP_PID: $XTCP_PI
 # PGREP_STATUS==
 
 #------------------------------------------
-# Read xconfig to see if xtcp should be disabled
-XTCP_DISABLED=$(/bin/echo $XTCP_DISABLED);
+# Read env to see if xtcp should be disabled
+XTCP_DISABLED="$(/bin/echo $XTCP_DISABLED)";
 echo_and_syslog "$0 line:$LINENO xtcp disabled: $XTCP_DISABLED";
 
 #------------------------------------------
@@ -88,7 +88,7 @@ else
 fi
 
 #-----------------------------------------------------------------------------------------------------------------
-# Read in xconfigs with some sanity checking
+# Read in env vars with some sanity checking
 
 #------------------------------------------
 # Read and sanity check xtcp_frequency
@@ -96,7 +96,7 @@ fi
 # Please note we could obviously do a lot better job of checking frequency
 # But this is just a few checks to make sure it's vaguely safe to use
 #
-XTCP_FREQUENCY=$(/bin/echo $XTCP_FREQUENCY);
+XTCP_FREQUENCY="$(/bin/echo $XTCP_FREQUENCY)";
 echo_and_syslog "$0 line:$LINENO XTCP_FREQUENCY: $XTCP_FREQUENCY";
 
 if [[ $XTCP_FREQUENCY == "default" ]]; then
@@ -131,7 +131,7 @@ if [[ ! "$XTCP_FREQUENCY_EVERYTHING_BUT_LAST_CHAR" =~ ^[0-9]+$ ]]; then
 	echo_and_syslog "$0 line:$LINENO XTCP_FREQUENCY must be numeric" "local0.error";
 	exit 1;
 fi
-XTCP_FREQUENCY_EVERYTHING_BUT_LAST_CHAR_NUM=$((XTCP_FREQUENCY_EVERYTHING_BUT_LAST_CHAR + 0))
+XTCP_FREQUENCY_EVERYTHING_BUT_LAST_CHAR_NUM="$((XTCP_FREQUENCY_EVERYTHING_BUT_LAST_CHAR + 0))"
 #--------------
 # Numbers must be < 86400
 if [[ $XTCP_FREQUENCY_EVERYTHING_BUT_LAST_CHAR_NUM -gt 86400 ]]; then
@@ -156,7 +156,7 @@ fi
 #------------------------------------------
 # Read and sanity check xtcp_sampling_modulus
 #
-XTCP_SAMPLING_MODULUS=$(/bin/echo $XTCP_SAMPLING_MODULUS);
+XTCP_SAMPLING_MODULUS="$(/bin/echo $XTCP_SAMPLING_MODULUS)";
 echo_and_syslog "$0 line:$LINENO XTCP_SAMPLING_MODULUS: $XTCP_SAMPLING_MODULUS";
 
 if [[ $XTCP_SAMPLING_MODULUS == "default" ]]; then
@@ -214,6 +214,44 @@ if [ $XTCP_REPORT_MODULUS -lt 1 ]; then
 	exit 1;
 fi
 
+#------------------------------------------
+# Read and sanity check xtcp_filter_report_modulus
+#
+XTCP_FILTER_REPORT_MODULUS="$(/bin/echo $XTCP_REPORT_MODULUS)";
+echo_and_syslog "$0 line:$LINENO XTCP_FILTER_REPORT_MODULUS: $XTCP_FILTER_REPORT_MODULUS";
+
+if [[ $XTCP_FILTER_REPORT_MODULUS == "default" ]]; then
+	XTCP_FILTER_REPORT_MODULUS=2000;
+	echo_and_syslog "$0 line:$LINENO Using default XTCP_FILTER_REPORT_MODULUS: $XTCP_FILTER_REPORT_MODULUS";
+fi
+
+#--------------
+# Check modulus is only numeric
+if [ $XTCP_FILTER_REPORT_MODULUS -ne $XTCP_FILTER_REPORT_MODULUS ]; then
+	echo_and_syslog "$0 line:$LINENO XTCP_FILTER_REPORT_MODULUS must be numeric:$XTCP_FILTER_REPORT_MODULUS " "local0.error";
+	exit 1;
+fi
+#--------------
+# The filter modulus may be quite high, so we skip the max value check.
+# Must be greater than zero >0
+if [ $XTCP_FILTER_REPORT_MODULUS -lt 1 ]; then
+	echo_and_syslog "$0 line:$LINENO XTCP_FILTER_REPORT_MODULUS must >= 1:$XTCP_FILTER_REPORT_MODULUS" "local0.error";
+	exit 1;
+fi
+
+#------------------------------------------
+# Load the list of pop-local IPs from pops.json
+XTCP_FILTER_JSON="$(/bin/echo $XTCP_FILTER_JSON)";
+
+#------------------------------------------
+# Read in the pop name
+XTCP_FILTER_GROUP="$(/bin/echo $XTCP_FILTER_GROUP)";
+
+#------------------------------------------
+# Read env var to see if fitlering is enabled
+XTCP_ENABLE_FILTER="$(/bin/echo $XTCP_ENABLE_FILTER)";
+echo_and_syslog "$0 line:$LINENO xtcp filter enabled: $XTCP_ENABLE_FILTER";
+
 #NSQ
 XTCP_NSQ=$(/bin/echo $XTCP_NSQ);
 echo_and_syslog "$0 line:$LINENO xtcp nsq: $XTCP_NSQ";
@@ -236,9 +274,24 @@ EXEC_COMMAND_ARRAY[4]="$XTCP_SAMPLING_MODULUS";
 EXEC_COMMAND_ARRAY[5]="-inetdiagerReportModulus";
 EXEC_COMMAND_ARRAY[6]="$XTCP_REPORT_MODULUS";
 
+# Counter to keep track of optional indices
+ind=7
+
+if [[ $XTCP_ENABLE_FILTER != "" ]]; then
+	EXEC_COMMAND_ARRAY[7]="-enableFilter";
+	EXEC_COMMAND_ARRAY[8]="-inetdiagerFilterReportModulus";
+	EXEC_COMMAND_ARRAY[9]="$XTCP_FILTER_REPORT_MODULUS";
+	EXEC_COMMAND_ARRAY[10]="-filterJson";
+	EXEC_COMMAND_ARRAY[11]="$XTCP_FILTER_JSON";
+	EXEC_COMMAND_ARRAY[12]="-filterGroup";
+	EXEC_COMMAND_ARRAY[13]="$XTCP_FILTER_GROUP";
+	ind=14
+fi
+
+
 if [[ $XTCP_NSQ != "" ]]; then
-	EXEC_COMMAND_ARRAY[7]="-nsq";
-	EXEC_COMMAND_ARRAY[8]="$XTCP_NSQ";
+	EXEC_COMMAND_ARRAY[$ind]="-nsq";
+	EXEC_COMMAND_ARRAY[$((ind+1))]="$XTCP_NSQ";
 fi
 
 # Print out what we have.
