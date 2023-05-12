@@ -31,9 +31,9 @@ more efficient than parsing the output of `ss`.
   - netlink message parsing (10 workers for IPv4, and 4 workers for IPv6 by default)
   - metrics summarization
 
-Please note that this tool simply selects randomly which sockets to stream data for, and does NOT trace indiviual sockets overtime (or is really unlike to anyway). e.g. https://github.com/m-lab/tcp-info is a better tool for closely monitoring a small number of sockets, because it has much higher frequency polling, and calculates differences between each polling loop.
+Please note that this tool simply selects randomly which sockets to stream data for, and does NOT trace indiviual sockets overtime (or is really unlikely to anyway). e.g. https://github.com/m-lab/tcp-info is a better tool for closely monitoring a small number of sockets, because it has much higher frequency polling, and calculates differences between each polling loop.
 
-`xtcp` exposes detailed metrics for monitoring it's behavior, and has many CLI flags to allow tuning.
+`xtcp` exposes detailed metrics for monitoring its behavior, and has many CLI flags to allow tuning.
 - `xtcp` has detailed Prometheus metrics at http://127.0.0.1:9000/metrics by default
 - `xtcp` also sends most statistics via statds, which can be disabled
 
@@ -76,7 +76,7 @@ Then `poller(s)` run the main `time.NewTicker` loop that sends the netlink INET_
 Setup steps:
 1. Build the per address family netlink dump request message.  The dump request asks for everything about the socket.
 2. Opens the netlink socket.  Because there is a poller per address family, there is also a socket per family.
-3. If the poller is IPv6, it sleeps for half (1/2) the polling frequency, so that polls and processing are off set from IPv4.  This is to make the overall load on the hosts more even.
+3. If the poller is IPv6, it sleeps for half (1/2) the polling frequency, so that polls and processing are offset from IPv4.  This is to make the overall load on the hosts more even.
 4. Starts the `time.NewTicker`
  
 Then loops:
