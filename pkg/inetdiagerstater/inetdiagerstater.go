@@ -37,6 +37,7 @@ type InetdiagerStatsWrapper struct {
 type InetdiagerStats struct {
 	InetdiagMsgInSizeTotal    int
 	InetdiagMsgCount          int
+	InetdiagMsgFilterCount    int
 	InetdiagMsgBytesReadTotal int
 	PadBufferTotal            int
 	UDPWritesTotal            int
@@ -68,6 +69,16 @@ func InetdiagerStater(in <-chan InetdiagerStatsWrapper, cliFlags cliflags.CliFla
 	)
 	inetdiagerReportModulus.Set(float64(*cliFlags.InetdiagerReportModulus))
 
+	inetdiagerFilterReportModulus := promauto.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: "xtcp",
+			Subsystem: "inetdiager",
+			Name:      "filter_report_modulus",
+			Help:      "inetdiager FilterReportModulus will sample every X inetdiag messages which match the block filters to send to Kafka.",
+		},
+	)
+	inetdiagerFilterReportModulus.Set(float64(*cliFlags.InetdiagerFilterReportModulus))
+
 	inetdiagerStatsRatio := promauto.NewGauge(
 		prometheus.GaugeOpts{
 			Namespace: "xtcp",
@@ -95,6 +106,15 @@ func InetdiagerStater(in <-chan InetdiagerStatsWrapper, cliFlags cliflags.CliFla
 			Subsystem: "inetdiager",
 			Name:      "msgs",
 			Help:      "inetdiager messages read from the netlinker channel, by address family, by worker id",
+		},
+		[]string{"af", "id"},
+	)
+	inetdiagerMsgFilters := promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "xtcp",
+			Subsystem: "inetdiager",
+			Name:      "msgsFilter",
+			Help:      "inetdiager messages read from the netlinker channel, by address family, by worker id that matched the filter",
 		},
 		[]string{"af", "id"},
 	)
@@ -275,6 +295,7 @@ func InetdiagerStater(in <-chan InetdiagerStatsWrapper, cliFlags cliflags.CliFla
 		// Calculate differences
 		diffStats.InetdiagMsgInSizeTotal = inetdiagerStatsWrapper.Stats.InetdiagMsgInSizeTotal - oldStats.InetdiagMsgInSizeTotal
 		diffStats.InetdiagMsgCount = inetdiagerStatsWrapper.Stats.InetdiagMsgCount - oldStats.InetdiagMsgCount
+		diffStats.InetdiagMsgFilterCount = inetdiagerStatsWrapper.Stats.InetdiagMsgFilterCount - oldStats.InetdiagMsgFilterCount
 		diffStats.InetdiagMsgBytesReadTotal = inetdiagerStatsWrapper.Stats.InetdiagMsgBytesReadTotal - oldStats.InetdiagMsgBytesReadTotal
 		diffStats.PadBufferTotal = inetdiagerStatsWrapper.Stats.PadBufferTotal - oldStats.PadBufferTotal
 		diffStats.UDPWritesTotal = inetdiagerStatsWrapper.Stats.UDPWritesTotal - oldStats.UDPWritesTotal
@@ -290,6 +311,7 @@ func InetdiagerStater(in <-chan InetdiagerStatsWrapper, cliFlags cliflags.CliFla
 
 		inetdiagerIn.WithLabelValues(kernelEnumToString[inetdiagerStatsWrapper.Af], strconv.FormatInt(int64(inetdiagerStatsWrapper.ID), 10)).Add(float64(diffStats.InetdiagMsgInSizeTotal))
 		inetdiagerMsgs.WithLabelValues(kernelEnumToString[inetdiagerStatsWrapper.Af], strconv.FormatInt(int64(inetdiagerStatsWrapper.ID), 10)).Add(float64(diffStats.InetdiagMsgCount))
+		inetdiagerMsgFilters.WithLabelValues(kernelEnumToString[inetdiagerStatsWrapper.Af], strconv.FormatInt(int64(inetdiagerStatsWrapper.ID), 10)).Add(float64(diffStats.InetdiagMsgFilterCount))
 		inetdiagerRead.WithLabelValues(kernelEnumToString[inetdiagerStatsWrapper.Af], strconv.FormatInt(int64(inetdiagerStatsWrapper.ID), 10)).Add(float64(diffStats.InetdiagMsgBytesReadTotal))
 		inetdiagerPad.WithLabelValues(kernelEnumToString[inetdiagerStatsWrapper.Af], strconv.FormatInt(int64(inetdiagerStatsWrapper.ID), 10)).Add(float64(diffStats.PadBufferTotal))
 		inetdiagerUDPs.WithLabelValues(kernelEnumToString[inetdiagerStatsWrapper.Af], strconv.FormatInt(int64(inetdiagerStatsWrapper.ID), 10)).Add(float64(diffStats.UDPWritesTotal))
@@ -297,9 +319,11 @@ func InetdiagerStater(in <-chan InetdiagerStatsWrapper, cliFlags cliflags.CliFla
 		inetdiagerUDPErrors.WithLabelValues(kernelEnumToString[inetdiagerStatsWrapper.Af], strconv.FormatInt(int64(inetdiagerStatsWrapper.ID), 10)).Add(float64(diffStats.UDPErrorsTotal))
 		inetdiagerStatsBlocked.WithLabelValues(kernelEnumToString[inetdiagerStatsWrapper.Af], strconv.FormatInt(int64(inetdiagerStatsWrapper.ID), 10)).Add(float64(diffStats.StatsBlocked))
 
+		// Sum all tyeps of messages for the total
 		inetdiagerMsgsTotal.WithLabelValues(kernelEnumToString[inetdiagerStatsWrapper.Af]).Add(float64(diffStats.InetdiagMsgCount))
+		inetdiagerMsgsTotal.WithLabelValues(kernelEnumToString[inetdiagerStatsWrapper.Af]).Add(float64(diffStats.InetdiagMsgFilterCount))
 		inetdiagerUDPsTotal.WithLabelValues(kernelEnumToString[inetdiagerStatsWrapper.Af]).Add(float64(diffStats.UDPWritesTotal))
-		totalInetdiagerMsgs += diffStats.InetdiagMsgCount
+		totalInetdiagerMsgs += (diffStats.InetdiagMsgCount + diffStats.InetdiagMsgFilterCount)
 		totalInetdiagerUDPs += diffStats.UDPWritesTotal
 
 		// This modulus is a little tricky, cos it's looking up the number of inetdiagers by address family

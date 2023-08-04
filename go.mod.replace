@@ -11,6 +11,8 @@ replace github.com/Edgio/xtcp/pkg/netlinker => ./pkg/netlinker
 
 replace github.com/Edgio/xtcp/pkg/inetdiager => ./pkg/inetdiager
 
+replace github.com/Edgio/xtcp/pkg/blockfilter => ./pkg/blockfilter
+
 replace github.com/Edgio/xtcp/pkg/pollerstater => ./pkg/pollerstater
 
 replace github.com/Edgio/xtcp/pkg/inetdiagerstater => ./pkg/inetdiagerstater

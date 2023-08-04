@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Edgio/xtcp/pkg/blockfilter"
 	"github.com/Edgio/xtcp/pkg/cliflags"
 	"github.com/Edgio/xtcp/pkg/inetdiag"
 	"github.com/Edgio/xtcp/pkg/inetdiagerstater"
@@ -465,49 +466,8 @@ func processNetlinkAttributes(id int, af *uint8, inetdiagMsgReader *bytes.Reader
 				fmt.Println("inetdiager:", id, "\taf:", *af, "\tINET_DIAG_SHUTDOWN\t*shutdownState:", *shutdownState)
 			}
 			break
-		//--- NOT INET_DIAG_DCINFO - no body uses this UDP protocol
-		case 9:
-			inetdiagMsgComplete, attributesBytesRead = notDecodingThisAttributeTypeYet()
-			if debugLevel > 10 {
-				fmt.Println("inetdiager:", id, "\taf:", *af, "\tINET_DIAG_DCINFO", "\tERROR!!  TODO Fix me")
-			}
-			break
-		//INET_DIAG_PROTOCOL
-		case 10:
-			inetdiagMsgComplete, attributesBytesRead = notDecodingThisAttributeTypeYet()
-			if debugLevel > 10 {
-				fmt.Println("inetdiager:", id, "\taf:", *af, "\tINET_DIAG_PROTOCOL", "\tERROR!!  TODO Fix me")
-			}
-			break
-		//INET_DIAG_SKV6ONLY
+		//INET_DIAG_SKV6ONLY, case 11
 		// TODO per the comment in INET_DIAG_TCLASS above, need to handle this case for IPv6 LISTEN and CLOSE sockets
-		case 11:
-			inetdiagMsgComplete, attributesBytesRead = notDecodingThisAttributeTypeYet()
-			if debugLevel > 10 {
-				fmt.Println("inetdiager:", id, "\taf:", *af, "\tINET_DIAG_SKV6ONLY", "\tERROR!!  TODO Fix me")
-			}
-			break
-		//INET_DIAG_LOCALS
-		case 12:
-			inetdiagMsgComplete, attributesBytesRead = notDecodingThisAttributeTypeYet()
-			if debugLevel > 10 {
-				fmt.Println("inetdiager:", id, "\taf:", *af, "\tINET_DIAG_LOCALS", "\tERROR!!  TODO Fix me")
-			}
-			break
-		//INET_DIAG_PEERS
-		case 13:
-			inetdiagMsgComplete, attributesBytesRead = notDecodingThisAttributeTypeYet()
-			if debugLevel > 10 {
-				fmt.Println("inetdiager:", id, "\taf:", *af, "\tINET_DIAG_PEERS", "\tERROR!!  TODO Fix me")
-			}
-			break
-		//INET_DIAG_PAD
-		case 14:
-			inetdiagMsgComplete, attributesBytesRead = notDecodingThisAttributeTypeYet()
-			if debugLevel > 10 {
-				fmt.Println("inetdiager:", id, "\taf:", *af, "\tINET_DIAG_PAD", "\tERROR!!  TODO Fix me")
-			}
-			break
 		//INET_DIAG_MARK
 		case 15:
 			inetdiagMsgComplete, attributesBytesRead = binaryReadWithErrorHandling(id, "INET_DIAG_MARK", inetdiagMsgReader, mark, netlinkAttributeDataLength, af)
@@ -527,17 +487,11 @@ func processNetlinkAttributes(id int, af *uint8, inetdiagMsgReader *bytes.Reader
 			if debugLevel > 100 {
 				fmt.Println("inetdiager:", id, "\taf:", *af, "\tINET_DIAG_TOS\t*typeOfService:", *typeOfService)
 			}
-			break	
-		case 18:
-			inetdiagMsgComplete, attributesBytesRead = notDecodingThisAttributeTypeYet()
-			if debugLevel > 10 {
-				fmt.Println("inetdiager:", id, "\taf:", *af, "\tINET_DIAG_LOCALS", "\tERROR!!  TODO Fix me")
-			}
-			break	
+			break
 		default:
 			inetdiagMsgComplete, attributesBytesRead = notDecodingThisAttributeTypeYet()
-			if debugLevel > 10 {
-				fmt.Println("inetdiager:", id, "\taf:", *af, "\tnlattr.NlaType default??", nlattr.NlaType, "\tERROR!!  TODO Fix me")
+			if debugLevel > 100 {
+				fmt.Println("inetdiager:", id, "\taf:", *af, "\tUnparsed nlattr.NlaType default??", nlattr.NlaType)
 			}
 			break
 		}
@@ -619,7 +573,7 @@ func sendToNSQ(topic string, message []byte, nsqServer string) error {
 // Inetdiager is the worker which recieves the Inetdiag messages from the netlinker
 // This functino does the heavy lifting in terms of parsing the inetdiag messages
 // currently we don't need the netlinkerDone channel, but we will once this function passes downstream
-func Inetdiager(id int, af *uint8, in <-chan netlinker.TimeSpecandInetDiagMessage, wg *sync.WaitGroup, hostname string, cliFlags cliflags.CliFlags, inetdiagerStaterCh chan<- inetdiagerstater.InetdiagerStatsWrapper) {
+func Inetdiager(id int, af *uint8, in <-chan netlinker.TimeSpecandInetDiagMessage, wg *sync.WaitGroup, hostname string, cliFlags cliflags.CliFlags, inetdiagerStaterCh chan<- inetdiagerstater.InetdiagerStatsWrapper, filterBlocks *blockfilter.NetBlocks) {
 
 	//defer close(out)
 	defer wg.Done()
@@ -628,6 +582,7 @@ func Inetdiager(id int, af *uint8, in <-chan netlinker.TimeSpecandInetDiagMessag
 	//var nlattr inetdiag.Nlattr
 
 	var inetdiagMsgCount int
+	var inetdiagMsgFilterCount int
 	var inetdiagMsgInSize int
 	var inetdiagMsgBytesRemaining int
 	var inetdiagMsgBytesRead int
@@ -703,6 +658,7 @@ func Inetdiager(id int, af *uint8, in <-chan netlinker.TimeSpecandInetDiagMessag
 				Stats: inetdiagerstater.InetdiagerStats{
 					InetdiagMsgInSizeTotal:    inetdiagMsgInSizeTotal,
 					InetdiagMsgCount:          inetdiagMsgCount,
+					InetdiagMsgFilterCount:    inetdiagMsgFilterCount,
 					InetdiagMsgBytesReadTotal: inetdiagMsgBytesReadTotal,
 					PadBufferTotal:            padBufferTotal,
 					UDPWritesTotal:            udpWritesTotal,
@@ -790,12 +746,21 @@ func Inetdiager(id int, af *uint8, in <-chan netlinker.TimeSpecandInetDiagMessag
 			inetdiagMsgBytesReadTotal += bytesRead
 			padBufferTotal += padBufferSize
 
+			// Check to see if it was coming from the loopback, if so, just skip
+			if !(*cliFlags.IncludeLoopback) && sourceIP.IsLoopback() {
+				continue
+			}
+
+			// Check it against the filter, to see if we should sample it at the regular modulus or the filter modulus
+			filterMatch := *cliFlags.EnableFilter && blockfilter.IsFilter(destinationIP, filterBlocks)
+
 			// cli reporting frequency based on constant, as a variable to be able to pass to buildProto
 			if debugLevel > 100 {
 				fmt.Println("inetdiager:", id, "\taf:", *af, "\tinetdiagMsgCount:", inetdiagMsgCount, "\t*cliFlags.inetdiagerReportModulus:", *cliFlags.InetdiagerReportModulus, "\tmodulus:", inetdiagMsgCount%(*cliFlags.InetdiagerReportModulus))
 			}
 
-			if *cliFlags.InetdiagerReportModulus == 1 || inetdiagMsgCount%*cliFlags.InetdiagerReportModulus == 1 {
+			// Depending on the filter state, check against the appropriate report modulus
+			if (filterMatch && inetdiagMsgFilterCount%*cliFlags.InetdiagerFilterReportModulus == 0) || (!filterMatch && inetdiagMsgCount%*cliFlags.InetdiagerReportModulus == 0) {
 
 				if debugLevel > 100 {
 					fmt.Println("inetdiager:", id, "\taf:", *af, "\tinetdiagMsgCount:", inetdiagMsgCount, "\tinetdiagMsgBytesReadTotal(M):", inetdiagMsgBytesReadTotal/10^6)
@@ -845,7 +810,13 @@ func Inetdiager(id int, af *uint8, in <-chan netlinker.TimeSpecandInetDiagMessag
 					fmt.Println(XtcpRecordJSON)
 				}
 			}
-			inetdiagMsgCount++
+			// Make sure we advance the right counter
+			if filterMatch {
+				inetdiagMsgFilterCount++
+			} else {
+				inetdiagMsgCount++
+			}
+
 		}
 		//for inetdiagMsgComplete := false; !inetdiagMsgComplete && inetdiagMsgBytesRemaining > 0; {
 	}
